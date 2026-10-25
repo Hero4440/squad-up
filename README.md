@@ -1,126 +1,117 @@
-# Squad Up
+# RoomieAgent
 
-Slack bot for multi-agent negotiation between ASU students. Each student's AI agent (Claude Haiku) negotiates with friends' agents in group channels.
+AI-powered roommate coordination app for ASU students. Chat naturally with RoomieAgent to split chores, schedule study groups, pick class sections, and plan events — all while keeping your private info safe.
 
-**Tracks:** 2 (Agent-to-Agent Coordination) + 3 (Group Chat Assistant)
+Built for the Cubbie Hackathon. Tracks 2 (Agent-to-Agent Coordination) + 3 (Group Chat Assistant).
 
-## Features
+## What It Does
 
-| Command | What it does |
+You open the chat as yourself (Shreeya, Rishi, Tejas, or Arjun). RoomieAgent greets you and you can talk freely — ask questions, get suggestions, or trigger a feature by name.
+
+When you trigger a feature, each roommate's personal AI agent negotiates on their behalf. Agents only share what's on their allowlist — schedules, private notes, and personal reasons stay hidden.
+
+### Features
+
+| Trigger | What happens |
 |---------|-------------|
-| `/squad class CSE310` | Coordinate class sections — find one that works for everyone |
-| `/squad study CSE310` | Schedule study group — find time + location |
-| `/squad plans` | Plan event attendance — who can go, carpool groups |
-| `/squad chores` | Split household chores — maximin fairness |
+| `chores` | Splits cleaning, dishes, dusting, cooking using maximin fairness |
+| `study CSE310` | Finds a study time + location that works for everyone in the course |
+| `class CSE310` | Picks the best section from live ASU class data |
+| `plans` | Coordinates event attendance + carpool groups by campus |
 
-## How It Works
+### How Negotiation Works
 
 ```
-User: /squad study CSE310
-  ↓
-Bot: Privacy consent (ephemeral) → [Start] [Cancel]
-  ↓
-Agents: Each agent shares only allowlisted info
-  ↓
-Solver: Finds best option (intersection/optimization)
-  ↓
-Bot: Posts proposal with [Approve] [Veto] per person
-  ↓
-If veto: Private DM → safe public reason → re-propose (max 3 rounds)
-If all approve: ✅ Signed!
+You: "chores"
+  → RoomieAgent asks your chore preferences (tap once per chore)
+  → Solver assigns chores to maximize the minimum happiness
+  → Other roommates' AI agents comment on the proposal
+  → You see a proposal card: approve or veto
+  → Veto? Give a private reason → safe public version is shared → re-propose (max 3 rounds)
+  → All approve? Locked in.
 ```
 
-## Privacy
+### Privacy
 
-Allowlist-based redaction per feature. Agents **never** share:
+Each feature has a strict allowlist. Agents **never** leak:
 - Full schedules
-- Private notes (work, health, personal)
-- Reasons for vetoes (only safe summaries)
+- Private notes (work, health, personal circumstances)
+- Real reasons for vetoes (only AI-sanitized summaries)
+
+## Demo Profiles
+
+| Student | Campus | Courses | Style |
+|---------|--------|---------|-------|
+| Shreeya | Tempe | CSE310, CSE240, PHY121 | Organized, morning person |
+| Rishi | Downtown | CSE310, CSE240, ENG101 | Social, night owl |
+| Tejas | Tempe | CSE310, MAT267 | Chill, flexible |
+| Arjun | Tempe | CSE360, CSE240, MAT243 | Neat, early riser |
 
 ## Setup
 
-### 1. Create Slack App
-
-Go to https://api.slack.com/apps → Create New App → From Manifest:
-
-```yaml
-display_information:
-  name: Squad Up
-  description: AI agent negotiation for student groups
-features:
-  bot_user:
-    display_name: Squad Up
-    always_online: true
-  slash_commands:
-    - command: /squad
-      description: Start a group negotiation
-      usage_hint: "<class|study|plans|chores> [args]"
-  interactivity:
-    is_enabled: true
-oauth_config:
-  scopes:
-    bot:
-      - commands
-      - chat:write
-      - im:write
-      - users:read
-settings:
-  socket_mode_enabled: true
-```
-
-### 2. Install & Configure
-
-```bash
-# Install to workspace, then copy tokens
-cp .env.example .env
-# Edit .env with your tokens:
-#   SLACK_BOT_TOKEN=xoxb-...
-#   SLACK_APP_TOKEN=xapp-...
-#   ANTHROPIC_API_KEY=sk-ant-...
-```
-
-### 3. Install Dependencies
+### 1. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Run
+### 2. Set your API key
 
 ```bash
-python3 bot.py
+export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-### 5. Test (no Slack/API needed)
+Or create a `.env` file:
+
+```
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+### 3. Run
+
+```bash
+python3 web.py
+```
+
+Open [http://localhost:8888?user=shreeya](http://localhost:8888?user=shreeya)
+
+Switch users by changing `?user=rishi`, `?user=tejas`, or `?user=arjun`.
+
+### 4. Test (no API key needed)
 
 ```bash
 python3 tests/test_solvers.py
 ```
 
+## Deploy
+
+Works on any platform that runs Python. Example with Render:
+
+1. Push to GitHub
+2. Render → New Web Service → connect repo
+3. Build command: `pip install -r requirements.txt`
+4. Start command: `python web.py`
+5. Add environment variable: `ANTHROPIC_API_KEY`
+
 ## Architecture
 
 ```
-bot.py          ← Slack Bolt app, slash commands, buttons, Socket Mode
-agents.py       ← Profile loading, schedule parsing, free slot extraction
-solvers.py      ← 4 solvers (class, study, plans, chores)
-negotiator.py   ← Multi-round negotiation engine (propose/veto/counter)
-llm.py          ← Claude Haiku wrapper for agent reasoning
-privacy.py      ← Allowlist redaction per feature
-asu_search.py   ← ASU public API client (classes, events, news, people)
-blocks.py       ← Slack Block Kit message builders
-profiles/       ← Sample student profiles (Maya, Jordan, Leo)
+web.py           ← HTTP server, chat API, feature routing
+llm.py           ← Anthropic Claude API — free-form chat + agent reasoning
+agents.py        ← Profile loading, schedule parsing, free slot extraction
+solvers.py       ← 4 solvers (class, study, plans, chores)
+negotiator.py    ← Multi-round propose/veto/counter engine
+prefs.py         ← Per-user preferences (chores, vibe, campus, avatar)
+privacy.py       ← Allowlist-based redaction per feature
+asu_search.py    ← ASU public API client (classes, events, news)
+scenarios.py     ← Scripted demo flow (legacy, not used in chat mode)
+static/index.html ← Single-page chat UI (WhatsApp-style)
+profiles/        ← Student profiles + saved preferences
 ```
 
-## Demo Profiles
+## Tech Stack
 
-| Student | Campus | Courses | Personality |
-|---------|--------|---------|-------------|
-| Maya Chen | Tempe | CSE310, CSE240, PHY121 | Organized, prefers mornings |
-| Jordan Rivera | Downtown | CSE310, CSE240, ENG101 | Social, night owl |
-| Leo Nguyen | Tempe | CSE310, MAT267 | Chill, flexible |
-
-## Extending
-
-To add a student: edit `profiles/students.json` and update their `slack_id` to match their real Slack user ID.
-
-To add a feature: add a solver in `solvers.py`, a privacy allowlist in `privacy.py`, and wire it into `bot.py`.
+- **Backend:** Python stdlib HTTP server (no framework)
+- **LLM:** Claude Haiku via Anthropic API
+- **Frontend:** Vanilla HTML/CSS/JS — single file, no build step
+- **Data:** ASU public class/event APIs, local JSON profiles

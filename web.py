@@ -95,7 +95,7 @@ def _format_proposal_title(feature, proposal):
     return feature.title()
 
 
-def _format_proposal_body(feature, proposal):
+def _format_proposal_body(feature, proposal, user_id=None):
     """Detailed body for proposal card."""
     if feature == "class":
         sec = proposal.get("proposal", {})
@@ -123,13 +123,13 @@ def _format_proposal_body(feature, proposal):
         ]
         if proposal.get("carpool_groups"):
             for campus, sids in proposal["carpool_groups"].items():
-                names = [agents.get_profile(s)["name"].split()[0] for s in sids]
+                names = ["You" if s == user_id else agents.get_profile(s)["name"].split()[0] for s in sids]
                 lines.append(f"Carpool ({campus}): {', '.join(names)}")
         return "\n".join(lines)
     elif feature == "chores":
         lines = []
         for chore, sid in proposal.get("assignments", {}).items():
-            name = agents.get_profile(sid)["name"].split()[0] if sid else "unassigned"
+            name = "You" if sid == user_id else (agents.get_profile(sid)["name"].split()[0] if sid else "unassigned")
             pref = proposal.get("explanation", {}).get(chore, {}).get("their_preference", "?")
             lines.append(f"{name}: {chore} (preference: {pref}/5)")
         return "\n".join(lines)
@@ -152,14 +152,14 @@ def _format_proposal_explanation(feature, proposal):
     return ""
 
 
-def _build_proposal_card(feature, proposal, participants, neg_id, round_num=1):
+def _build_proposal_card(feature, proposal, participants, neg_id, round_num=1, user_id=None):
     """Build rich proposal card message."""
     participant_status = []
     for sid in participants:
         info = _participant_info(sid)
         participant_status.append({
             "id": sid,
-            "name": info["name"].split()[0],
+            "name": "You" if sid == user_id else info["name"].split()[0],
             "initial": info["initial"],
             "color": info["color"],
             "status": "pending",
@@ -169,7 +169,7 @@ def _build_proposal_card(feature, proposal, participants, neg_id, round_num=1):
         "type": "proposal_card",
         "label": feature.upper(),
         "title": _format_proposal_title(feature, proposal),
-        "body": _format_proposal_body(feature, proposal),
+        "body": _format_proposal_body(feature, proposal, user_id),
         "explanation": _format_proposal_explanation(feature, proposal),
         "participants": participant_status,
         "neg_id": neg_id,
@@ -309,7 +309,7 @@ def _run_feature(feature, args, user_id, flow=None):
     if feature == "chores":
         neg["constraints"].extend(hard_nos)
 
-    messages.append(_build_proposal_card(feature, proposal, participants, neg["id"]))
+    messages.append(_build_proposal_card(feature, proposal, participants, neg["id"], user_id=user_id))
 
     return messages
 
@@ -387,7 +387,7 @@ def _handle_veto_reason(reason, user_id):
 
     messages.append(_build_votes(others, agent_msgs))
     messages.append(_build_proposal_card(
-        neg["feature"], proposal, neg["participants"], us["neg_id"], round_num))
+        neg["feature"], proposal, neg["participants"], us["neg_id"], round_num, user_id=user_id))
 
     return messages
 
