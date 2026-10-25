@@ -17,7 +17,7 @@
       {"subject": "CSE", "number": "240", "section": "2001", "title": "Intro to Programming Languages"},
       {"subject": "PHY", "number": "121", "section": "3001", "title": "Physics I"}
     ],
-    "chore_preferences": {"dishes": 3, "trash": 4, "bathroom": 1, "kitchen": 3, "vacuum": 4},
+    "chore_preferences": {"cleaning": 3, "dishes": 3, "dusting": 4, "cooking": 2},
     "interests": ["AI workshops", "career fairs", "hackathons"],
     "private_notes": "Works at Starbucks evenings, can't do weekend chores"
   },
@@ -39,7 +39,7 @@
       {"subject": "CSE", "number": "240", "section": "2001", "title": "Intro to Programming Languages"},
       {"subject": "ENG", "number": "101", "section": "4001", "title": "English Composition"}
     ],
-    "chore_preferences": {"dishes": 2, "trash": 5, "bathroom": 3, "kitchen": 1, "vacuum": 2},
+    "chore_preferences": {"cleaning": 4, "dishes": 2, "dusting": 3, "cooking": 1},
     "interests": ["hackathons", "basketball games", "concerts"],
     "private_notes": "Has ADHD, needs quiet environment but won't say so"
   },
@@ -60,7 +60,7 @@
       {"subject": "CSE", "number": "310", "section": "1001", "title": "Data Structures"},
       {"subject": "MAT", "number": "267", "section": "5001", "title": "Calculus III"}
     ],
-    "chore_preferences": {"dishes": 4, "trash": 2, "bathroom": 5, "kitchen": 4, "vacuum": 1},
+    "chore_preferences": {"cleaning": 2, "dishes": 4, "dusting": 1, "cooking": 5},
     "interests": ["gaming tournaments", "AI workshops", "food festivals"],
     "private_notes": "Dealing with family issues, needs Fridays off for therapy"
   },
@@ -82,7 +82,7 @@
       {"subject": "CSE", "number": "240", "section": "2001", "title": "Intro to Programming Languages"},
       {"subject": "MAT", "number": "243", "section": "3001", "title": "Discrete Math"}
     ],
-    "chore_preferences": {"dishes": 4, "trash": 3, "bathroom": 2, "kitchen": 5, "vacuum": 3},
+    "chore_preferences": {"cleaning": 5, "dishes": 4, "dusting": 3, "cooking": 4},
     "interests": ["hackathons", "morning runs", "career fairs"],
     "private_notes": "Vegetarian, prefers quiet after 10pm"
   }

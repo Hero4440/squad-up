@@ -722,7 +722,7 @@ const agentOf = v => ({
 });
 
 /* ---------- state ---------- */
-const state = { lastKey: null, typing: null, unread: 0, busy: false, awaitingReason: false, scenarioActive: true };
+const state = { lastKey: null, typing: null, unread: 0, busy: false, awaitingReason: false, scenarioActive: false };
 
 /* ---------- scroll handling ---------- */
 const nearBottom = () => chat.scrollHeight - chat.scrollTop - chat.clientHeight < 120;
@@ -1594,51 +1594,29 @@ async function scenarioAdvance(action, value) {
 }
 
 /* ---------- init ---------- */
-const FLOW = new URLSearchParams(location.search).get('flow') || 'scenario';
+const FLOW = new URLSearchParams(location.search).get('flow') || 'chat';
 
 (async function init() {
   state.busy = true;
+  state.scenarioActive = false;
+  input.placeholder = 'Message';
 
-  if (FLOW === 'classic') {
-    // Old Squad Up flow — input bar active, no scenario
-    state.scenarioActive = false;
-    state.currentMode = 'classic';
-    input.placeholder = 'Message';
-    setHeader('RoomieAgent', 'Shreeya, Rishi, Tejas', 'group');
-    addPill('Today', 'date');
-    addPill('RoomieAgent only sees what each agent is allowed to share. Schedules and private notes stay private.', 'lock');
-    addPill('RoomieAgent joined the group');
-    await sleep(1200);
-    showTyping(BOT);
-    await sleep(1700);
-    hideTyping();
-    try {
-      const greetData = await (await fetch(uq('/api/greeting'))).json();
-      addPill(greetData.text);
-    } catch (e) {
-      addPill('I can sort out study groups, class sections, plans, or chores. Try "chores" or "study CSE310".');
-    }
-    state.busy = false;
-    return;
-  }
-
-  // Scenario flow (default)
-  state.currentMode = 'group';
+  setHeader('RoomieAgent', 'Shreeya, Rishi, Tejas, Arjun', 'group');
   addPill('Today', 'date');
+  addPill('RoomieAgent only sees what each agent is allowed to share. Schedules and private notes stay private.', 'lock');
+  addPill('RoomieAgent joined the group');
+
+  await sleep(1200);
+  showTyping(BOT);
+  await sleep(1700);
+  hideTyping();
 
   try {
-    const resp = await fetch(uq('/api/init'));
-    const data = await resp.json();
-
-    if (data.ui_patch) {
-      setHeader(data.ui_patch.header_title, data.ui_patch.header_subtitle, data.ui_patch.mode);
-    }
-
-    if (Array.isArray(data.messages)) {
-      await play(data.messages);
-    }
-  } catch (err) {
-    addPill('Could not load — ' + err.message);
+    const data = await (await fetch(uq('/api/init'))).json();
+    const greeting = data.greeting || data.text || 'Hey! Try "chores" or "study CSE310".';
+    addBubble({ who: BOT, side: 'in', text: greeting });
+  } catch (e) {
+    addPill('I can sort out study groups, class sections, plans, or chores. Try "chores" or "study CSE310".');
   }
 
   state.busy = false;

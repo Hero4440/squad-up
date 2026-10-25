@@ -34,6 +34,10 @@ agents.load_profiles()
 # Per-user state for chores negotiation
 _user_state = {}  # user -> {neg_id, awaiting_veto_reason}
 
+# Per-user conversation history for free-form chat
+_chat_history = {}  # user -> list of {role, content}
+_MAX_HISTORY = 20
+
 # Student metadata for frontend
 STUDENT_META = {
     "shreeya": {"name": "Shreeya", "initial": "S", "color": "#e07c5a", "accessory": "sunglasses"},
@@ -211,7 +215,7 @@ def _run_feature(feature, args, user_id, flow=None):
 
     if feature == "chores" and not prefs.chores_set(user_id):
         return [
-            {"type": "bot", "text": "Before I split the chores I need your take. Takes 10 seconds, tap one per chore."},
+            {"type": "bot", "text": "Quick — how do you feel about each chore? Tap one per row."},
             _chore_check_card(user_id),
         ]
 
@@ -288,7 +292,8 @@ def _run_feature(feature, args, user_id, flow=None):
     })
 
     agent_msgs = {}
-    for sid in participants:
+    other_participants = [sid for sid in participants if sid != user_id]
+    for sid in other_participants:
         try:
             profile = agents.get_profile(sid)
             context = f"Comment on this {feature} proposal: {proposal}" + prefs.tone_hint(sid)
@@ -297,7 +302,7 @@ def _run_feature(feature, args, user_id, flow=None):
             logger.warning(f"LLM error for {sid}: {e}")
             agent_msgs[sid] = f"{agents.get_profile(sid)['name']} is reviewing the proposal."
 
-    messages.append(_build_votes(participants, agent_msgs))
+    messages.append(_build_votes(other_participants, agent_msgs))
 
     neg = negotiator.create(feature, "web", participants, proposal, solver_fn, solver_args)
     us["neg_id"] = neg["id"]
@@ -371,7 +376,8 @@ def _handle_veto_reason(reason, user_id):
     messages.append({"type": "bot", "text": "Re-negotiating with updated constraints..."})
 
     agent_msgs = {}
-    for sid in neg["participants"]:
+    others = [sid for sid in neg["participants"] if sid != user_id]
+    for sid in others:
         try:
             profile = agents.get_profile(sid)
             context = f"Round {round_num}: proposal changed after veto. New proposal: {proposal}" + prefs.tone_hint(sid)
@@ -379,7 +385,7 @@ def _handle_veto_reason(reason, user_id):
         except Exception:
             agent_msgs[sid] = f"{agents.get_profile(sid)['name']} is reviewing."
 
-    messages.append(_build_votes(neg["participants"], agent_msgs))
+    messages.append(_build_votes(others, agent_msgs))
     messages.append(_build_proposal_card(
         neg["feature"], proposal, neg["participants"], us["neg_id"], round_num))
 
@@ -396,27 +402,27 @@ def _handle_explain(user_id):
     return [{"type": "bot", "text": explanation}]
 
 
-_FEATURES_LIST = "study groups, class sections, plans, or chores"
-_FALLBACK = f'I can sort out {_FEATURES_LIST}. Try "let\'s do chores" or "study CSE310".'
+def _get_history(user_id):
+    if user_id not in _chat_history:
+        _chat_history[user_id] = []
+    return _chat_history[user_id]
 
 
-def _generate_greeting():
-    if llm.MOCK:
-        return _FALLBACK
+def _chat_reply(user_id, user_text=None):
+    """Append user_text (if any) to history, call llm.chat(), append response, return text."""
+    hist = _get_history(user_id)
+    if user_text:
+        hist.append({"role": "user", "content": user_text})
     try:
-        resp = llm.client.messages.create(
-            model=llm.MODEL, max_tokens=150,
-            system=(
-                "You are RoomieAgent, an AI bot in an ASU student group. "
-                "Write a short, friendly welcome message (2-3 sentences). "
-                "Mention you can help with: roommate matching, study groups, class sections, plans, and chores. "
-                "Give a quick example. Be casual, ASU-flavored. One emoji max."
-            ),
-            messages=[{"role": "user", "content": "Say hi to the group."}],
-        )
-        return llm._extract_text(resp) or _FALLBACK
-    except Exception:
-        return _FALLBACK
+        reply = llm.chat(user_id, hist if hist else None)
+    except Exception as e:
+        logger.warning(f"Chat LLM error: {e}")
+        reply = 'I can sort out study groups, class sections, plans, or chores. Try "chores" or "study CSE310".'
+    hist.append({"role": "assistant", "content": reply})
+    # Rolling window
+    if len(hist) > _MAX_HISTORY:
+        _chat_history[user_id] = hist[-_MAX_HISTORY:]
+    return reply
 
 
 def _parse_message(text, user_id, flow=None):
@@ -438,7 +444,7 @@ def _parse_message(text, user_id, flow=None):
             return [{"type": "bot", "text": f'Which class? Say something like "{feat} CSE310".'}], False
         return _run_feature(feat, args, user_id, flow), False
 
-    return [{"type": "bot", "text": _generate_greeting()}], False
+    return [{"type": "bot", "text": _chat_reply(user_id, text)}], False
 
 
 _TOPICS = (
@@ -499,11 +505,12 @@ class Handler(SimpleHTTPRequestHandler):
             state = negotiator.public_state(us["neg_id"]) if us["neg_id"] else None
             self._json_response({"state": state})
         elif path == "/api/greeting":
-            self._json_response({"text": _generate_greeting()})
+            user = _extract_user(qs)
+            self._json_response({"text": _chat_reply(user)})
         elif path == "/api/init":
             user = _extract_user(qs)
-            result = scenarios.current(user)
-            self._json_response(result)
+            greeting = _chat_reply(user)
+            self._json_response({"greeting": greeting})
         else:
             super().do_GET()
 
