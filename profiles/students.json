@@ -1,0 +1,89 @@
+{
+  "shreeya": {
+    "id": "shreeya",
+    "slack_id": "U_SHREEYA",
+    "name": "Shreeya",
+    "campus": "TEMPE",
+    "personality": "organized, prefers mornings, quiet studier",
+    "schedule": {
+      "Mon": ["9:00-10:15 CSE310", "11:00-11:50 PHY121"],
+      "Tue": ["1:30-2:45 CSE240"],
+      "Wed": ["9:00-10:15 CSE310", "11:00-11:50 PHY121"],
+      "Thu": ["1:30-2:45 CSE240"],
+      "Fri": ["11:00-11:50 PHY121"]
+    },
+    "courses": [
+      {"subject": "CSE", "number": "310", "section": "1001", "title": "Data Structures"},
+      {"subject": "CSE", "number": "240", "section": "2001", "title": "Intro to Programming Languages"},
+      {"subject": "PHY", "number": "121", "section": "3001", "title": "Physics I"}
+    ],
+    "chore_preferences": {"dishes": 3, "trash": 4, "bathroom": 1, "kitchen": 3, "vacuum": 4},
+    "interests": ["AI workshops", "career fairs", "hackathons"],
+    "private_notes": "Works at Starbucks evenings, can't do weekend chores"
+  },
+  "rishi": {
+    "id": "rishi",
+    "slack_id": "U_RISHI",
+    "name": "Rishi",
+    "campus": "DOWNTOWN",
+    "personality": "social, night owl, group study lover",
+    "schedule": {
+      "Mon": ["2:00-3:15 CSE310"],
+      "Tue": ["9:00-10:15 ENG101", "1:30-2:45 CSE240"],
+      "Wed": ["2:00-3:15 CSE310"],
+      "Thu": ["9:00-10:15 ENG101", "1:30-2:45 CSE240"],
+      "Fri": []
+    },
+    "courses": [
+      {"subject": "CSE", "number": "310", "section": "1002", "title": "Data Structures"},
+      {"subject": "CSE", "number": "240", "section": "2001", "title": "Intro to Programming Languages"},
+      {"subject": "ENG", "number": "101", "section": "4001", "title": "English Composition"}
+    ],
+    "chore_preferences": {"dishes": 2, "trash": 5, "bathroom": 3, "kitchen": 1, "vacuum": 2},
+    "interests": ["hackathons", "basketball games", "concerts"],
+    "private_notes": "Has ADHD, needs quiet environment but won't say so"
+  },
+  "tejas": {
+    "id": "tejas",
+    "slack_id": "U_TEJAS",
+    "name": "Tejas",
+    "campus": "TEMPE",
+    "personality": "chill, flexible schedule, likes coffee shops",
+    "schedule": {
+      "Mon": ["9:00-10:15 CSE310"],
+      "Tue": ["11:00-12:15 MAT267"],
+      "Wed": ["9:00-10:15 CSE310"],
+      "Thu": ["11:00-12:15 MAT267"],
+      "Fri": ["1:00-2:15 CSE310"]
+    },
+    "courses": [
+      {"subject": "CSE", "number": "310", "section": "1001", "title": "Data Structures"},
+      {"subject": "MAT", "number": "267", "section": "5001", "title": "Calculus III"}
+    ],
+    "chore_preferences": {"dishes": 4, "trash": 2, "bathroom": 5, "kitchen": 4, "vacuum": 1},
+    "interests": ["gaming tournaments", "AI workshops", "food festivals"],
+    "private_notes": "Dealing with family issues, needs Fridays off for therapy"
+  },
+  "arjun": {
+    "id": "arjun",
+    "slack_id": "U_ARJUN",
+    "name": "Arjun",
+    "campus": "TEMPE",
+    "personality": "neat, early riser, structured routine",
+    "schedule": {
+      "Mon": ["8:00-9:15 CSE360", "10:00-10:50 MAT243"],
+      "Tue": ["1:30-2:45 CSE240"],
+      "Wed": ["8:00-9:15 CSE360", "10:00-10:50 MAT243"],
+      "Thu": ["1:30-2:45 CSE240"],
+      "Fri": ["10:00-10:50 MAT243"]
+    },
+    "courses": [
+      {"subject": "CSE", "number": "360", "section": "1001", "title": "Software Engineering"},
+      {"subject": "CSE", "number": "240", "section": "2001", "title": "Intro to Programming Languages"},
+      {"subject": "MAT", "number": "243", "section": "3001", "title": "Discrete Math"}
+    ],
+    "chore_preferences": {"dishes": 4, "trash": 3, "bathroom": 2, "kitchen": 5, "vacuum": 3},
+    "interests": ["hackathons", "morning runs", "career fairs"],
+    "private_notes": "Vegetarian, prefers quiet after 10pm"
+  }
+}

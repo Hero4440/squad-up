@@ -1,0 +1,22 @@
+display_information:
+  name: Squad Up
+  description: AI agent negotiation for student groups
+features:
+  bot_user:
+    display_name: Squad Up
+    always_online: true
+  slash_commands:
+    - command: /squad
+      description: Start a group negotiation
+      usage_hint: "<class|study|plans|chores> [args]"
+oauth_config:
+  scopes:
+    bot:
+      - commands
+      - chat:write
+      - im:write
+      - users:read
+settings:
+  interactivity:
+    is_enabled: true
+  socket_mode_enabled: true

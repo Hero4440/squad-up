@@ -1,0 +1,15 @@
+{
+  "agent_name": "",
+  "vibe": "chill",
+  "campus": "TEMPE",
+  "accessory": "",
+  "color": "",
+  "chores": {
+    "dishes": "happy",
+    "trash": "cant",
+    "bathroom": "fine",
+    "kitchen": "fine",
+    "vacuum": "fine"
+  },
+  "chores_set": false
+}

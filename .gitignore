@@ -1,0 +1,4 @@
+.env
+.venv/
+__pycache__/
+profiles/you_prefs_*.json
