@@ -14,7 +14,7 @@ import agents
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
-CHORES = ["cleaning", "dishes", "dusting", "cooking"]
+CHORES = ["cleaning", "dishes", "dusting", "cooking", "trash"]
 LEVELS = {"cant": None, "hate": 1, "fine": 3, "happy": 5}
 VIBES = ["chill", "hype", "formal"]
 CAMPUSES = ["TEMPE", "DOWNTOWN", "POLY", "WEST"]

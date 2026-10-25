@@ -283,18 +283,23 @@ def _housing_step(user):
     st = _get(user)
     step = st["chats"]["housing"]["step"]
 
-    if step == 0:   return _h_group_chat(user)
-    elif step == 1:  return _h_transition(user)
-    elif step == 2:  return _h_private_dm(user)
-    elif 3 <= step <= 7: return _h_preference(user, step - 3)
-    elif step == 8:  return _h_saved(user)
-    elif step == 9:  return _h_match_found(user)
-    elif step == 10: return _h_match_detail(user)
-    elif step == 11: return _h_confirmed(user)
-    elif step == 12: return _h_house_group(user)
-    elif step == 13: return _h_chores(user)
+    if step == 0:   return _h_welcome(user)
+    elif step == 1:  return _h_group_chat(user)
+    elif step == 2:  return _h_transition(user)
+    elif step == 3:  return _h_private_dm(user)
+    elif 4 <= step <= 8: return _h_preference(user, step - 4)
+    elif step == 9:  return _h_saved(user)
+    elif step == 10: return _h_match_found(user)
+    elif step == 11: return _h_match_detail(user)
+    elif step == 12: return _h_confirmed(user)
     else:
-        return {"messages": [{"type": "bot", "text": "Demo complete! \U0001F389"}], "ui_patch": {}}
+        partner = _partner_name(user)
+        return {
+            "messages": [
+                {"type": "bot", "text": f"You're all matched up with {partner}! \U0001F389 Head over to **Our Place** to set up your house."},
+            ],
+            "ui_patch": {"header_title": "ASU Spring 2027 Housing \U0001F335", "header_subtitle": "Matching complete", "mode": "group"},
+        }
 
 
 def _advance_housing(user, action, value):
@@ -302,23 +307,41 @@ def _advance_housing(user, action, value):
     hs = st["chats"]["housing"]
     step = hs["step"]
 
-    if 3 <= step <= 7 and action == "pick" and value is not None:
-        q = ROOMMATE_QUESTIONS[step - 3]
+    if 4 <= step <= 8 and action == "pick" and value is not None:
+        q = ROOMMATE_QUESTIONS[step - 4]
         hs["prefs"][q["key"]] = value
 
-    if step == 9 and action == "show_more":
+    if step == 10 and action == "show_more":
         hs["revealed"] = True
-        hs["step"] = 10
-        return _housing_step(user)
-    if step == 9 and action == "connect":
         hs["step"] = 11
         return _housing_step(user)
     if step == 10 and action == "connect":
-        hs["step"] = 11
+        hs["step"] = 12
+        return _housing_step(user)
+    if step == 11 and action == "connect":
+        hs["step"] = 12
         return _housing_step(user)
 
-    hs["step"] = step + 1
+    hs["step"] = min(step + 1, 13)  # cap at 13 (complete)
     return _housing_step(user)
+
+
+def _h_welcome(user):
+    """Welcome message before entering the group chat."""
+    return {
+        "messages": [
+            {"type": "bot", "text": "Welcome to ASU Spring 2027 Housing! \U0001F335"},
+            {"type": "bot", "text": "I\u2019m RoomieAgent \u2014 I\u2019ll help you find the perfect roommate based on lifestyle compatibility."},
+            {
+                "type": "notice_card",
+                "title": "\U0001F3E0 How it works",
+                "body": "1. Join the housing group chat\n2. Answer 5 quick private questions\n3. Get matched with a compatible roommate\n4. Set up your house together",
+                "cta": "Enter group chat",
+                "action": "next",
+            },
+        ],
+        "ui_patch": {"header_title": "ASU Housing \U0001F335", "header_subtitle": "RoomieAgent", "mode": "housing_intro"},
+    }
 
 
 def _h_group_chat(user):
@@ -441,34 +464,6 @@ def _h_confirmed(user):
     }
 
 
-def _h_house_group(user):
-    partner = _partner_name(user)
-    return {
-        "messages": [
-            {"type": "system", "text": "Welcome to Our Place \u2014 ASU 2027 \U0001F3E1"},
-            {"type": "bot", "text": f"Welcome to your new house group! \U0001F3E1 You and {partner} can plan everything here."},
-            {"type": "bot", "text": "What should we tackle first?"},
-            {
-                "type": "notice_card",
-                "title": "\U0001F3E1 House setup",
-                "body": "Let\u2019s get your place organized! Pick something to start with.",
-                "cta": "Split chores",
-                "action": "chores",
-            },
-        ],
-        "ui_patch": {"header_title": "Our Place \u2014 ASU 2027 \U0001F3E1", "header_subtitle": f"You, {partner}", "mode": "house"},
-    }
-
-
-def _h_chores(user):
-    return {
-        "messages": "__chores__",
-        "ui_patch": {"header_title": "Our Place \u2014 ASU 2027 \U0001F3E1", "header_subtitle": f"You, {_partner_name(user)}", "mode": "house"},
-        "post_messages": [
-            {"type": "bot", "text": "Chores sorted! \U0001F389 A few ideas for what\u2019s next:"},
-            {"type": "bot", "text": "\U0001F5D3 Weekend hangout \u2014 Mill Ave, hiking Camelback, or movie night?\n\U0001F504 Chore rotation \u2014 want to swap assignments weekly or keep them fixed?"},
-        ],
-    }
 
 
 # ===================================================================

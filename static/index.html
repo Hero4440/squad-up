@@ -771,6 +771,8 @@ const agentOf = v => ({
 
 /* ---------- state ---------- */
 const state = { lastKey: null, typing: null, unread: 0, busy: false, awaitingReason: false, scenarioActive: false, freeformChat: false, screenHistory: [], chatCache: {}, currentChatId: null };
+// URL flow selector: 'scenario' (multi-chat w/ chat list) or 'chat' (standalone). Declared early so updateBackBtn can use it.
+const FLOW = new URLSearchParams(location.search).get('flow') || 'scenario';
 
 /* ---------- scroll handling ---------- */
 const nearBottom = () => chat.scrollHeight - chat.scrollTop - chat.clientHeight < 120;
@@ -911,19 +913,17 @@ function clearChat() {
 /* ---------- back button navigation ---------- */
 const backBtn = document.querySelector('.top .back');
 function updateBackBtn() {
-  if (state.freeformChat) {
-    // In Squad Up 1-on-1 chat: always show back
-    backBtn.style.display = 'grid';
+  // Show whenever we're inside a chat: freeform, a live scenario chat, or the
+  // chore handoff (where scenarioActive is temporarily off but we're still in a
+  // chat). currentChatId survives the scenarioActive toggle, so it's the
+  // reliable "inside a scenario chat" signal. Hidden only on the chat list
+  // (mode 'home') and in the standalone chat-only flow (no currentChatId).
+  const inChat = state.currentMode && state.currentMode !== 'home';
+  const show = state.freeformChat || (inChat && !!state.currentChatId);
+  backBtn.style.display = show ? 'grid' : 'none';
+  if (show) {
     backBtn.style.opacity = '1';
     backBtn.style.pointerEvents = 'auto';
-  } else if (state.scenarioActive) {
-    // Hide on home/chat-list screen, show in any chat
-    const inChat = state.currentMode && state.currentMode !== 'home';
-    backBtn.style.display = inChat ? 'grid' : 'none';
-    backBtn.style.opacity = '1';
-    backBtn.style.pointerEvents = 'auto';
-  } else {
-    backBtn.style.display = 'none';
   }
 }
 function pushScreen() {
@@ -946,8 +946,9 @@ backBtn.addEventListener('click', () => {
     input.placeholder = 'Message';
     return;
   }
-  // In multi-chat mode: back always returns to chat list
-  if (state.scenarioActive && state.currentMode !== 'home') {
+  // In any scenario chat (including the chore handoff, where scenarioActive is
+  // off): back returns to the chat list.
+  if (state.currentChatId && state.currentMode && state.currentMode !== 'home') {
     scenarioAdvance('go_back');
     return;
   }
@@ -1835,7 +1836,6 @@ async function scenarioAdvance(action, value) {
 }
 
 /* ---------- init ---------- */
-const FLOW = new URLSearchParams(location.search).get('flow') || 'scenario';
 
 (async function init() {
   state.busy = true;
