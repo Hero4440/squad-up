@@ -1002,7 +1002,7 @@ function buildCard(m) {
   if (m.explanation) inner.append(h('div', 'card-why', m.explanation));
 
   const ppl = h('div', 'ppl');
-  const everyone = [{ name: 'You', initial: 'Y', color: '#00a884', you: true }, ...(m.participants || [])];
+  const everyone = (m.participants || []).map(p => p.name === 'You' ? { ...p, you: true } : p);
   everyone.forEach((p, i) => {
     const chip = h('div', 'chip-p' + (p.you ? ' you' : ''));
     const a = h('span', 'pa', p.initial);
