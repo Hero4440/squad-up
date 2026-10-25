@@ -220,13 +220,6 @@ def _run_feature(feature, args, user_id, flow=None):
             _chore_check_card(user_id),
         ]
 
-    allowed = ALLOWED[feature]
-    hidden = ["full schedule", "private notes", "personality"]
-    messages.append({
-        "type": "system",
-        "text": f"Privacy: sharing {', '.join(sorted(allowed))}. NOT sharing: {', '.join(hidden)}.",
-    })
-
     if feature == "class":
         match = re.match(r"([A-Za-z]+)\s*(\d+)", args)
         if not match:
