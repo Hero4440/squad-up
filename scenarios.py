@@ -299,6 +299,7 @@ def _housing_step(user):
                 {"type": "bot", "text": f"You're all matched up with {partner}! \U0001F389 Head over to **Our Place** to set up your house."},
             ],
             "ui_patch": {"header_title": "ASU Spring 2027 Housing \U0001F335", "header_subtitle": "Matching complete", "mode": "group"},
+            "done": True,  # terminal step: stop the client auto-advancer
         }
 
 

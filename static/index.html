@@ -913,13 +913,13 @@ function clearChat() {
 /* ---------- back button navigation ---------- */
 const backBtn = document.querySelector('.top .back');
 function updateBackBtn() {
-  // Show whenever we're inside a chat: freeform, a live scenario chat, or the
-  // chore handoff (where scenarioActive is temporarily off but we're still in a
-  // chat). currentChatId survives the scenarioActive toggle, so it's the
-  // reliable "inside a scenario chat" signal. Hidden only on the chat list
-  // (mode 'home') and in the standalone chat-only flow (no currentChatId).
+  // Show whenever we're inside a chat in the scenario (multi-chat) flow, or in
+  // the freeform Squad Up chat. FLOW is the reliable signal: it doesn't depend
+  // on how we reached the chat (enter_chat vs an /api/init resume, which never
+  // sets currentChatId). Hidden only on the chat list (mode 'home') and in the
+  // standalone chat-only flow (FLOW === 'chat').
   const inChat = state.currentMode && state.currentMode !== 'home';
-  const show = state.freeformChat || (inChat && !!state.currentChatId);
+  const show = state.freeformChat || (FLOW === 'scenario' && inChat);
   backBtn.style.display = show ? 'grid' : 'none';
   if (show) {
     backBtn.style.opacity = '1';
@@ -948,7 +948,7 @@ backBtn.addEventListener('click', () => {
   }
   // In any scenario chat (including the chore handoff, where scenarioActive is
   // off): back returns to the chat list.
-  if (state.currentChatId && state.currentMode && state.currentMode !== 'home') {
+  if (FLOW === 'scenario' && state.currentMode && state.currentMode !== 'home') {
     scenarioAdvance('go_back');
     return;
   }
@@ -1459,11 +1459,30 @@ function shake() {
 }
 
 const COMMANDISH = /^(approve|confirm|yes|ok|veto|another option|no|why|explain|study|class|plans|chores|@squad|@roomie)/i;
+// Roommate-intent phrases that start the housing matching flow from typed text.
+const ROOMMATE_INTENT = /room\s?mate|roomie|looking for a room|match me|find.*room/i;
 
 async function send(cmd, shown) {
   const text = (cmd || '').trim();
   if (!text) return;
   if (state.busy) { shake(); return; }
+
+  // Housing scenario: typing a roommate-intent message (while on the housing
+  // group screen) starts matching, same as the "Enter group chat" button.
+  // Bridges typed input — which normally hits /api/message — into the
+  // scenario engine so the flow runs: private DM -> 5 questions -> match.
+  // mode 'group' uniquely identifies the housing group step in the scenario
+  // flow, so this works even on an /api/init resume (no currentChatId).
+  if (FLOW === 'scenario' && state.currentMode === 'group' && ROOMMATE_INTENT.test(text)) {
+    closePops();
+    addBubble({ who: ME, side: 'out', text: shown || text });
+    sfx.sent();
+    input.value = '';
+    bar.classList.remove('has-text');
+    scenarioAdvance('start');
+    return;
+  }
+
   state.busy = true;
   goBtn.classList.add('busy');
   closePops();
@@ -1819,7 +1838,7 @@ async function scenarioAdvance(action, value) {
 
       // Auto-advance for transition/saved/confirmed steps (no user interaction needed)
       const hasButton = data.messages.some(m => m.type === 'notice_card' || m.type === 'match_card' || m.type === 'pref_card' || m.type === 'signed');
-      if (!hasButton && !hasChoreCard && state.scenarioActive && state.currentMode !== 'home') {
+      if (!hasButton && !hasChoreCard && !data.freeform && !data.done && state.scenarioActive && state.currentMode !== 'home') {
         await sleep(1500);
         state.busy = false;
         goBtn.classList.remove('busy');
@@ -1879,6 +1898,14 @@ async function scenarioAdvance(action, value) {
     // Don't add date pill for home/chat-list
     if (state.currentMode !== 'home') {
       addPill('Today', 'date');
+    }
+    // Resuming into a freeform chat (server kept current_chat in memory):
+    // switch to freeform so the auto-advancer doesn't loop on the intro.
+    if (data.freeform) {
+      state.scenarioActive = false;
+      state.freeformChat = true;
+      input.placeholder = 'Message Squad Up\u2026';
+      updateBackBtn();
     }
     if (Array.isArray(data.messages)) {
       await play(data.messages);
