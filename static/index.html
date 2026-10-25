@@ -770,7 +770,7 @@ const agentOf = v => ({
 });
 
 /* ---------- state ---------- */
-const state = { lastKey: null, typing: null, unread: 0, busy: false, awaitingReason: false, scenarioActive: false, freeformChat: false, screenHistory: [], chatCache: {}, currentChatId: null };
+const state = { lastKey: null, typing: null, unread: 0, busy: false, awaitingReason: false, scenarioActive: false, freeformChat: false, screenHistory: [], chatCache: {}, currentChatId: null, awaitingTrigger: null };
 // URL flow selector: 'scenario' (multi-chat w/ chat list) or 'chat' (standalone). Declared early so updateBackBtn can use it.
 const FLOW = new URLSearchParams(location.search).get('flow') || 'scenario';
 
@@ -1461,26 +1461,32 @@ function shake() {
 const COMMANDISH = /^(approve|confirm|yes|ok|veto|another option|no|why|explain|study|class|plans|chores|@squad|@roomie)/i;
 // Roommate-intent phrases that start the housing matching flow from typed text.
 const ROOMMATE_INTENT = /room\s?mate|roomie|looking for a room|match me|find.*room/i;
+// Chores-intent phrases that start the Our Place chore flow from typed text.
+const CHORES_INTENT = /chore|clean|dishes|split.*chore|manage.*chore/i;
 
 async function send(cmd, shown) {
   const text = (cmd || '').trim();
   if (!text) return;
   if (state.busy) { shake(); return; }
 
-  // Housing scenario: typing a roommate-intent message (while on the housing
-  // group screen) starts matching, same as the "Enter group chat" button.
-  // Bridges typed input — which normally hits /api/message — into the
-  // scenario engine so the flow runs: private DM -> 5 questions -> match.
-  // mode 'group' uniquely identifies the housing group step in the scenario
-  // flow, so this works even on an /api/init resume (no currentChatId).
-  if (FLOW === 'scenario' && state.currentMode === 'group' && ROOMMATE_INTENT.test(text)) {
-    closePops();
-    addBubble({ who: ME, side: 'out', text: shown || text });
-    sfx.sent();
-    input.value = '';
-    bar.classList.remove('has-text');
-    scenarioAdvance('start');
-    return;
+  // Typed-intent triggers: the user starts a scenario flow by texting
+  // (e.g. "I want a roommate" in Housing, "manage my chores" in Our Place)
+  // instead of tapping a card. A greeting step sets awaitingTrigger; the
+  // matching intent then advances the flow. Bridges typed input (normally
+  // /api/message) into the scenario engine.
+  if (FLOW === 'scenario' && state.awaitingTrigger) {
+    const hit = (state.awaitingTrigger === 'roommate' && ROOMMATE_INTENT.test(text))
+             || (state.awaitingTrigger === 'chores' && CHORES_INTENT.test(text));
+    if (hit) {
+      closePops();
+      addBubble({ who: ME, side: 'out', text: shown || text });
+      sfx.sent();
+      input.value = '';
+      bar.classList.remove('has-text');
+      state.awaitingTrigger = null;
+      scenarioAdvance('next');
+      return;
+    }
   }
 
   state.busy = true;
@@ -1708,6 +1714,7 @@ function _saveChat() {
       lastKey: state.lastKey,
       mode: state.currentMode,
       freeform: state.freeformChat,
+      awaitingTrigger: state.awaitingTrigger,
       headerTitle: document.getElementById('headerTitle').textContent,
       headerSub: document.getElementById('headerSub').textContent,
     };
@@ -1721,6 +1728,7 @@ function _restoreChat(id) {
   state.lastKey = cached.lastKey;
   state.currentChatId = id;
   state.currentMode = cached.mode;
+  state.awaitingTrigger = cached.awaitingTrigger || null;
   if (cached.freeform) {
     state.scenarioActive = false;
     state.freeformChat = true;
@@ -1772,6 +1780,7 @@ async function scenarioAdvance(action, value) {
     });
     const data = await resp.json();
     hideTyping();
+    state.awaitingTrigger = data.await_trigger || null;
 
     if (data.ui_patch) {
       const p = data.ui_patch;
@@ -1889,6 +1898,7 @@ async function scenarioAdvance(action, value) {
 
   try {
     const data = await (await fetch(uq('/api/init'))).json();
+    state.awaitingTrigger = data.await_trigger || null;
     if (data.ui_patch) {
       const p = data.ui_patch;
       setHeader(p.header_title, p.header_subtitle, p.mode);

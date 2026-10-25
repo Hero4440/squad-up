@@ -170,16 +170,21 @@ CHAT_LIST = [
 _state = {}
 
 
+def _fresh_chats():
+    """Initial per-chat state. Each chat starts at its greeting (step 0)."""
+    return {
+        "squadup": {"step": 0},
+        "housing": {"step": 0, "prefs": {}, "revealed": False},
+        "friends": {"step": 0},
+        "house":   {"step": 0},
+    }
+
+
 def _get(user):
     if user not in _state:
         _state[user] = {
             "current_chat": None,
-            "chats": {
-                "squadup": {"step": 0},
-                "housing": {"step": 0, "prefs": {}, "revealed": False},
-                "friends": {"step": 0},
-                "house":   {"step": 0},
-            },
+            "chats": _fresh_chats(),
         }
     return _state[user]
 
@@ -283,7 +288,7 @@ def _housing_step(user):
     st = _get(user)
     step = st["chats"]["housing"]["step"]
 
-    if step == 0:   return _h_welcome(user)
+    if step == 0:   return _h_greeting(user)
     elif step == 1:  return _h_group_chat(user)
     elif step == 2:  return _h_transition(user)
     elif step == 3:  return _h_private_dm(user)
@@ -327,21 +332,16 @@ def _advance_housing(user, action, value):
     return _housing_step(user)
 
 
-def _h_welcome(user):
-    """Welcome message before entering the group chat."""
+def _h_greeting(user):
+    """Entry greeting. Waits for the user to text their intent before the flow starts."""
     return {
         "messages": [
             {"type": "bot", "text": "Welcome to ASU Spring 2027 Housing! \U0001F335"},
-            {"type": "bot", "text": "I\u2019m RoomieAgent \u2014 I\u2019ll help you find the perfect roommate based on lifestyle compatibility."},
-            {
-                "type": "notice_card",
-                "title": "\U0001F3E0 How it works",
-                "body": "1. Join the housing group chat\n2. Answer 5 quick private questions\n3. Get matched with a compatible roommate\n4. Set up your house together",
-                "cta": "Enter group chat",
-                "action": "next",
-            },
+            {"type": "bot", "text": "I\u2019m RoomieAgent. Looking for a roommate? Just type **I want a roommate** and I\u2019ll get started."},
         ],
-        "ui_patch": {"header_title": "ASU Housing \U0001F335", "header_subtitle": "RoomieAgent", "mode": "housing_intro"},
+        "ui_patch": {"header_title": "ASU Housing \U0001F335", "header_subtitle": "RoomieAgent", "mode": "group"},
+        "done": True,            # don't auto-advance — wait for the user
+        "await_trigger": "roommate",
     }
 
 
@@ -356,13 +356,6 @@ def _h_group_chat(user):
     msgs.append({"type": "bot", "text": "Hey everyone! \U0001F44B I'm RoomieAgent \u2014 your AI roommate matchmaker."})
     msgs.append({"type": "bot", "text": "Here\u2019s how it works:\n1\ufe0f\u20e3 I\u2019ll ask you a few private questions about your lifestyle\n2\ufe0f\u20e3 Match you with compatible students\n3\ufe0f\u20e3 Set up your house group & help split chores"})
     msgs.append({"type": "bot", "text": "Everything you share stays private \u2014 I only reveal compatibility scores, never your actual answers."})
-    msgs.append({
-        "type": "notice_card",
-        "title": "\U0001F3E0 Ready?",
-        "body": "Tap below to start the matching process. Takes about 2 minutes.",
-        "cta": "Start Roommate Matching",
-        "action": "start",
-    })
     return {
         "messages": msgs,
         "ui_patch": {"header_title": "ASU Spring 2027 Housing \U0001F335", "header_subtitle": "34 members", "mode": "group"},
@@ -583,12 +576,13 @@ def _house_step(user):
     st = _get(user)
     step = st["chats"]["house"]["step"]
 
-    if step == 0:   return _o_intro(user)
-    elif step == 1: return _o_chores(user)
-    elif step == 2: return _o_result(user)
-    elif step == 3: return _o_done(user)
+    if step == 0:   return _o_greeting(user)
+    elif step == 1: return _o_intro(user)
+    elif step == 2: return _o_chores(user)
+    elif step == 3: return _o_result(user)
+    elif step == 4: return _o_done(user)
     else:
-        return {"messages": [{"type": "bot", "text": "House all set! \U0001F3E1"}], "ui_patch": {}}
+        return {"messages": [{"type": "bot", "text": "House all set! \U0001F3E1"}], "ui_patch": {}, "done": True}
 
 
 def _advance_house(user, action, value):
@@ -596,6 +590,18 @@ def _advance_house(user, action, value):
     hs = st["chats"]["house"]
     hs["step"] = hs["step"] + 1
     return _house_step(user)
+
+
+def _o_greeting(user):
+    """Entry greeting. Waits for the user to text 'manage my chores' before the flow starts."""
+    return {
+        "messages": [
+            {"type": "bot", "text": "Welcome to Our Place! \U0001F3E1"},
+        ],
+        "ui_patch": {"header_title": "Our Place \U0001F3E1", "header_subtitle": "You, Arjun, Shreeya, Tejas", "mode": "house"},
+        "done": True,            # don't auto-advance — wait for the user
+        "await_trigger": "chores",
+    }
 
 
 def _o_intro(user):
@@ -606,13 +612,6 @@ def _o_intro(user):
             {"type": "bot", "text": "Agreed. Last week nobody took out the trash until it overflowed", "sender": "shreeya"},
             {"type": "bot", "text": "My bad\u2026 thought it was Arjun\u2019s turn", "sender": "tejas"},
             {"type": "bot", "text": "I can help split chores fairly! Everyone picks preferences and I\u2019ll assign what works best."},
-            {
-                "type": "notice_card",
-                "title": "\U0001F9F9 Split chores?",
-                "body": "Tap below to start. Everyone picks what they like and I\u2019ll figure out the fairest split.",
-                "cta": "Let\u2019s do it",
-                "action": "start_chores",
-            },
         ],
         "ui_patch": {"header_title": "Our Place \U0001F3E1", "header_subtitle": "You, Arjun, Shreeya, Tejas", "mode": "house"},
     }
