@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#202c33">
-<title>RoomieAgent</title>
+<title>Squad Up</title>
 <style>
 :root {
   --bg: #0b141a;
@@ -471,6 +471,47 @@ svg { display: block; }
 /* confetti */
 .confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
 
+/* ---------- chat list (home screen) ---------- */
+.chat-list { display: flex; flex-direction: column; height: 100%; }
+.cl-header {
+  padding: 18px 16px 6px;
+  font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
+  color: var(--accent);
+}
+.chat-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  transition: background .12s;
+  animation: slide-in .3s ease backwards;
+}
+.chat-item:hover { background: rgba(255,255,255,.04); }
+.chat-item:active { background: rgba(255,255,255,.08); }
+.ci-av {
+  width: 52px; height: 52px; flex: none;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 1.5rem;
+}
+.ci-body { flex: 1; min-width: 0; }
+.ci-title { font-size: 16px; font-weight: 500; line-height: 21px; margin-bottom: 2px; }
+.ci-preview {
+  font-size: 13.5px; line-height: 18px;
+  color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ci-meta { text-align: right; flex: none; }
+.ci-time { font-size: 12px; color: var(--muted); }
+.ci-badge {
+  background: var(--accent); color: #0b141a;
+  font-size: 11px; font-weight: 700;
+  min-width: 20px; height: 20px;
+  border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-top: 4px; padding: 0 5px;
+}
+
 /* ---------- keyframes ---------- */
 @keyframes bob { 0%, 100% { transform: translateY(0) scale(1, 1); } 50% { transform: translateY(-2px) scale(1.04, .96); } }
 @keyframes pop-in {
@@ -507,10 +548,10 @@ svg { display: block; }
     <button class="ibtn back" aria-label="Back"><span data-ic="back"></span></button>
     <div class="gav"><span data-ic="group" data-size="34"></span></div>
     <div class="tbox">
-      <div class="t1" id="headerTitle">ASU Spring 2027 Housing</div>
+      <div class="t1" id="headerTitle">Squad Up</div>
       <div class="t2">
-        <span class="s-idle" id="headerSub">Shreeya, Rishi, Tejas, Arjun</span>
-        <span class="s-typing"><span id="typingLabel">RoomieAgent is typing</span><span class="tdots"><i></i><i></i><i></i></span></span>
+        <span class="s-idle" id="headerSub">Your agents talk so you don't have to</span>
+        <span class="s-typing"><span id="typingLabel">Squad Up is typing</span><span class="tdots"><i></i><i></i><i></i></span></span>
       </div>
     </div>
     <button class="ibtn" aria-label="Video call"><span data-ic="video"></span></button>
@@ -527,7 +568,7 @@ svg { display: block; }
     <button class="ibtn plus" id="plusBtn" aria-label="Quick actions"><span data-ic="plus" data-size="26"></span></button>
     <div class="field" id="field">
       <button class="ibtn" id="emojiBtn" aria-label="Emoji" style="width:38px;height:38px"><span data-ic="emoji"></span></button>
-      <input id="input" type="text" placeholder="Tap buttons to continue" autocomplete="off" enterkeyhint="send" aria-label="Message">
+      <input id="input" type="text" placeholder="Message" autocomplete="off" enterkeyhint="send" aria-label="Message">
     </div>
     <button class="go" id="go" aria-label="Send"><span class="i-mic" data-ic="mic" data-size="22"></span><span class="i-send" data-ic="send" data-size="22"></span></button>
 
@@ -554,10 +595,17 @@ const goBtn = document.getElementById('go');
 const topEl = document.getElementById('top');
 const fab = document.getElementById('fab');
 
-// User from URL param
-const USER = new URLSearchParams(location.search).get('user')?.toLowerCase() || 'shreeya';
+// User — default to "you" (generic student), override with ?user= if present
+const USER = new URLSearchParams(location.search).get('user')?.toLowerCase() || 'you';
 const uq = (url) => url + (url.includes('?') ? '&' : '?') + 'user=' + USER;
 
+function miniMd(text) {
+  // Simple markdown: **bold**, \n→<br>, bullet lines
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .replace(/\n/g, '<br>');
+}
 const h = (tag, cls, text) => {
   const n = document.createElement(tag);
   if (cls) n.className = cls;
@@ -711,7 +759,7 @@ function blob(accessory, color, size = 42) {
 }
 
 /* ---------- people ---------- */
-const BOT = { key: 'bot', name: 'RoomieAgent', color: '#06cf9c', emoji: '\u{1F3E0}' };
+const BOT = { key: 'bot', name: 'Squad Up', color: '#06cf9c', emoji: '\u{1F3E0}' };
 const ME = { key: 'me' };
 const agentOf = v => ({
   key: 'agent:' + v.name,
@@ -722,7 +770,7 @@ const agentOf = v => ({
 });
 
 /* ---------- state ---------- */
-const state = { lastKey: null, typing: null, unread: 0, busy: false, awaitingReason: false, scenarioActive: false };
+const state = { lastKey: null, typing: null, unread: 0, busy: false, awaitingReason: false, scenarioActive: false, freeformChat: false, screenHistory: [], chatCache: {}, currentChatId: null };
 
 /* ---------- scroll handling ---------- */
 const nearBottom = () => chat.scrollHeight - chat.scrollTop - chat.clientHeight < 120;
@@ -789,7 +837,11 @@ function addBubble({ who, side = 'in', text = '', node = null, cls = '', meta = 
     b.append(n);
   }
   if (node) b.append(node);
-  else b.append(h('span', 'txt', text), h('span', 'sp'));
+  else {
+    const t = h('span', 'txt');
+    t.innerHTML = miniMd(text);
+    b.append(t, h('span', 'sp'));
+  }
 
   let ticks = null;
   if (meta) {
@@ -848,13 +900,67 @@ function hideTyping() {
 
 /* ---------- header + screen transitions ---------- */
 function setHeader(title, subtitle, mode) {
-  document.getElementById('headerTitle').textContent = title || 'RoomieAgent';
+  document.getElementById('headerTitle').textContent = title || 'Squad Up';
   document.getElementById('headerSub').textContent = subtitle || '';
 }
 function clearChat() {
   chat.replaceChildren();
   state.lastKey = null;
 }
+
+/* ---------- back button navigation ---------- */
+const backBtn = document.querySelector('.top .back');
+function updateBackBtn() {
+  if (state.freeformChat) {
+    // In Squad Up 1-on-1 chat: always show back
+    backBtn.style.display = 'grid';
+    backBtn.style.opacity = '1';
+    backBtn.style.pointerEvents = 'auto';
+  } else if (state.scenarioActive) {
+    // Hide on home/chat-list screen, show in any chat
+    const inChat = state.currentMode && state.currentMode !== 'home';
+    backBtn.style.display = inChat ? 'grid' : 'none';
+    backBtn.style.opacity = '1';
+    backBtn.style.pointerEvents = 'auto';
+  } else {
+    backBtn.style.display = 'none';
+  }
+}
+function pushScreen() {
+  state.screenHistory.push({
+    title: document.getElementById('headerTitle').textContent,
+    subtitle: document.getElementById('headerSub').textContent,
+    mode: state.currentMode,
+    scrollContent: chat.innerHTML,
+    lastKey: state.lastKey,
+  });
+  updateBackBtn();
+}
+backBtn.addEventListener('click', () => {
+  // Freeform bot chat: go back to chat list (state restored after save)
+  if (state.freeformChat) {
+    scenarioAdvance('go_back');
+    // Restore scenario mode after _saveChat captures freeform state
+    state.freeformChat = false;
+    state.scenarioActive = true;
+    input.placeholder = 'Message';
+    return;
+  }
+  // In multi-chat mode: back always returns to chat list
+  if (state.scenarioActive && state.currentMode !== 'home') {
+    scenarioAdvance('go_back');
+    return;
+  }
+  if (!state.screenHistory.length) return;
+  const prev = state.screenHistory.pop();
+  setHeader(prev.title, prev.subtitle, prev.mode);
+  state.currentMode = prev.mode;
+  chat.innerHTML = prev.scrollContent;
+  state.lastKey = prev.lastKey;
+  updateBackBtn();
+  toBottom();
+});
+updateBackBtn();
 
 /* ---------- notice card renderer ---------- */
 function renderNoticeCard(m) {
@@ -1270,6 +1376,9 @@ function beatsFor(m) {
         rishi:   { key: 'rishi',   name: 'Rishi',   color: '#5aa8e0', look: { accessory: 'beret', color: '#5aa8e0' } },
         tejas:   { key: 'tejas',   name: 'Tejas',   color: '#7bc47f', look: { accessory: 'frog', color: '#7bc47f' } },
         arjun:   { key: 'arjun',   name: 'Arjun',   color: '#8a55d6', look: { accessory: 'glasses', color: '#8a55d6' } },
+        priya:   { key: 'priya',   name: 'Priya',   color: '#e0a05a', look: { accessory: 'headphones', color: '#e0a05a' } },
+        alex:    { key: 'alex',    name: 'Alex',    color: '#5ae0c8', look: { accessory: 'beanie', color: '#5ae0c8' } },
+        sam:     { key: 'sam',     name: 'Sam',     color: '#c47bb8', look: { accessory: 'none', color: '#c47bb8' } },
       };
       const who = m.sender && STUDENT_META[m.sender] ? STUDENT_META[m.sender] : BOT;
       return [{ who, wait: typingTime(m.text), draw: () => addBubble({ who, text: m.text }) }];
@@ -1320,6 +1429,9 @@ function beatsFor(m) {
     case 'match_card':
       return [{ who: BOT, wait: 1800, draw: () => renderMatchCard(m) }];
 
+    case 'chat_list':
+      return [{ who: null, wait: 400, draw: () => renderChatList(m.conversations) }];
+
     default:
       return [{ who: null, wait: 600, draw: () => addPill(m.text || '') }];
   }
@@ -1350,7 +1462,6 @@ const COMMANDISH = /^(approve|confirm|yes|ok|veto|another option|no|why|explain|
 async function send(cmd, shown) {
   const text = (cmd || '').trim();
   if (!text) return;
-  if (state.scenarioActive) { shake(); return; }
   if (state.busy) { shake(); return; }
   state.busy = true;
   goBtn.classList.add('busy');
@@ -1536,12 +1647,102 @@ function burst(anchor) {
   })();
 }
 
+/* ---------- chat list renderer ---------- */
+function renderChatList(conversations) {
+  clearChat();
+  state.lastKey = null;
+  // Hide input bar on home screen
+  bar.style.display = 'none';
+  const wrap = h('div', 'chat-list');
+  const hdr = h('div', 'cl-header', 'Conversations');
+  wrap.append(hdr);
+  conversations.forEach((c, i) => {
+    const item = h('div', 'chat-item');
+    item.style.animationDelay = (80 + i * 60) + 'ms';
+    const av = h('div', 'ci-av');
+    av.textContent = c.emoji || '';
+    av.style.background = c.color || '#2a3942';
+    const body = h('div', 'ci-body');
+    body.append(h('div', 'ci-title', c.title));
+    body.append(h('div', 'ci-preview', c.preview));
+    const meta = h('div', 'ci-meta');
+    meta.append(h('div', 'ci-time', c.time));
+    if (c.unread) {
+      meta.append(h('div', 'ci-badge', String(c.unread)));
+    }
+    item.append(av, body, meta);
+    item.addEventListener('click', () => {
+      scenarioAdvance('enter_chat', c.id);
+    });
+    wrap.append(item);
+  });
+  push(wrap, { force: true });
+  sfx.got();
+}
+
 /* ---------- scenario engine ---------- */
+function _saveChat() {
+  if (state.currentChatId) {
+    state.chatCache[state.currentChatId] = {
+      html: chat.innerHTML,
+      lastKey: state.lastKey,
+      mode: state.currentMode,
+      freeform: state.freeformChat,
+      headerTitle: document.getElementById('headerTitle').textContent,
+      headerSub: document.getElementById('headerSub').textContent,
+    };
+  }
+}
+function _restoreChat(id) {
+  const cached = state.chatCache[id];
+  if (!cached) return false;
+  clearChat();
+  chat.innerHTML = cached.html;
+  state.lastKey = cached.lastKey;
+  state.currentChatId = id;
+  state.currentMode = cached.mode;
+  if (cached.freeform) {
+    state.scenarioActive = false;
+    state.freeformChat = true;
+    input.placeholder = 'Message Squad Up\u2026';
+  } else {
+    state.scenarioActive = true;
+    state.freeformChat = false;
+    input.placeholder = 'Message';
+  }
+  bar.style.display = 'flex';
+  updateBackBtn();
+  toBottom();
+  return true;
+}
+
 async function scenarioAdvance(action, value) {
   if (state.busy) { shake(); return; }
   state.busy = true;
   goBtn.classList.add('busy');
-  showTyping(BOT);
+
+  // Cache current chat before navigating away
+  if (action === 'go_back' || action === 'enter_chat') {
+    _saveChat();
+  }
+
+  // Restore cached chat if re-entering
+  if (action === 'enter_chat' && state.chatCache[value]) {
+    // Still tell server so state stays in sync
+    fetch(uq('/api/scenario'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: USER, action, value }),
+    }).catch(() => {});
+    const cached = state.chatCache[value];
+    setHeader(cached.headerTitle, cached.headerSub, cached.mode);
+    _restoreChat(value);
+    state.busy = false;
+    goBtn.classList.remove('busy');
+    return;
+  }
+
+  if (action !== 'go_back') showTyping(BOT);
 
   try {
     const resp = await fetch(uq('/api/scenario'), {
@@ -1557,27 +1758,67 @@ async function scenarioAdvance(action, value) {
       if (p.header_title || p.header_subtitle) {
         setHeader(p.header_title, p.header_subtitle, p.mode);
       }
-      // Clear chat on mode transitions
+      // Mode transition
       if (p.mode && p.mode !== state.currentMode) {
-        clearChat();
-        addPill('Today', 'date');
+        if (p.mode === 'home') {
+          // Going to chat list — just clear, no pushScreen
+          state.currentChatId = null;
+          clearChat();
+        } else if (state.currentMode !== 'home') {
+          // Transitioning between chat sub-screens (group→private→house)
+          pushScreen();
+          clearChat();
+          addPill('Today', 'date');
+        } else {
+          // Entering a chat from home
+          state.currentChatId = value || null;
+          clearChat();
+          addPill('Today', 'date');
+          bar.style.display = 'flex';
+        }
         state.currentMode = p.mode;
+        updateBackBtn();
       }
     }
 
+    // Freeform bot chat — switch to free typing mode
+    if (data.freeform) {
+      state.scenarioActive = false;
+      state.freeformChat = true;
+      input.placeholder = 'Message Squad Up\u2026';
+      updateBackBtn();
+    }
+
     if (Array.isArray(data.messages)) {
-      // Chores step returns pref_card/proposal_card — hand off to normal send() flow
-      const hasChoreCard = data.messages.some(m => m.type === 'pref_card' || m.type === 'proposal_card');
+      // chat_list type is rendered directly by beatsFor — skip chore/auto-advance logic
+      const isChatList = data.messages.some(m => m.type === 'chat_list');
+      if (isChatList) {
+        state.freeformChat = false;
+        state.scenarioActive = true;
+        input.placeholder = 'Message';
+        await play(data.messages);
+        state.busy = false;
+        goBtn.classList.remove('busy');
+        return;
+      }
+
+      // Chores step returns pref_card (with levels)/proposal_card — hand off to normal send() flow
+      // Housing scenario pref_cards have no 'level' in items — don't treat those as chore cards
+      const hasChoreCard = data.messages.some(m =>
+        m.type === 'proposal_card' ||
+        (m.type === 'pref_card' && m.items && m.items.length && 'level' in m.items[0])
+      );
       if (hasChoreCard) {
         state.scenarioActive = false;
         input.placeholder = 'Message';
+        state.screenHistory = [];
+        updateBackBtn();
       }
       await play(data.messages);
 
       // Auto-advance for transition/saved/confirmed steps (no user interaction needed)
-      const autoSteps = ['start', 'consent', 'next'];
-      const hasButton = data.messages.some(m => m.type === 'notice_card' || m.type === 'match_card' || m.type === 'pref_card');
-      if (!hasButton && !hasChoreCard && state.scenarioActive) {
+      const hasButton = data.messages.some(m => m.type === 'notice_card' || m.type === 'match_card' || m.type === 'pref_card' || m.type === 'signed');
+      if (!hasButton && !hasChoreCard && state.scenarioActive && state.currentMode !== 'home') {
         await sleep(1500);
         state.busy = false;
         goBtn.classList.remove('busy');
@@ -1594,29 +1835,56 @@ async function scenarioAdvance(action, value) {
 }
 
 /* ---------- init ---------- */
-const FLOW = new URLSearchParams(location.search).get('flow') || 'chat';
+const FLOW = new URLSearchParams(location.search).get('flow') || 'scenario';
 
 (async function init() {
   state.busy = true;
-  state.scenarioActive = false;
+
+  if (FLOW === 'chat') {
+    // Free chat bypass
+    state.scenarioActive = false;
+    input.placeholder = 'Message';
+    setHeader('Apartment 4B', 'Squad Up, Shreeya, Rishi, Tejas, Arjun', 'group');
+    addPill('Today', 'date');
+    addPill('Squad Up only sees what each agent is allowed to share. Schedules and private notes stay private.', 'lock');
+    addPill('Squad Up joined the group');
+    await sleep(1200);
+    showTyping(BOT);
+    await sleep(1700);
+    hideTyping();
+    try {
+      const data = await (await fetch(uq('/api/init'))).json();
+      const greeting = data.greeting || data.text || 'Hey! Try "chores" or "study CSE310".';
+      addBubble({ who: BOT, side: 'in', text: greeting });
+    } catch (e) {
+      addPill('I can sort out study groups, class sections, plans, or chores. Try "chores" or "study CSE310".');
+    }
+    state.busy = false;
+    return;
+  }
+
+  // Scenario flow — starts with chat list
+  state.scenarioActive = true;
   input.placeholder = 'Message';
-
-  setHeader('Apartment 4B', 'RoomieAgent, Shreeya, Rishi, Tejas, Arjun', 'group');
-  addPill('Today', 'date');
-  addPill('RoomieAgent only sees what each agent is allowed to share. Schedules and private notes stay private.', 'lock');
-  addPill('RoomieAgent joined the group');
-
-  await sleep(1200);
-  showTyping(BOT);
-  await sleep(1700);
-  hideTyping();
+  updateBackBtn();
 
   try {
     const data = await (await fetch(uq('/api/init'))).json();
-    const greeting = data.greeting || data.text || 'Hey! Try "chores" or "study CSE310".';
-    addBubble({ who: BOT, side: 'in', text: greeting });
+    if (data.ui_patch) {
+      const p = data.ui_patch;
+      setHeader(p.header_title, p.header_subtitle, p.mode);
+      state.currentMode = p.mode;
+      updateBackBtn();
+    }
+    // Don't add date pill for home/chat-list
+    if (state.currentMode !== 'home') {
+      addPill('Today', 'date');
+    }
+    if (Array.isArray(data.messages)) {
+      await play(data.messages);
+    }
   } catch (e) {
-    addPill('I can sort out study groups, class sections, plans, or chores. Try "chores" or "study CSE310".');
+    addPill('Couldn\u2019t start scenario: ' + e.message);
   }
 
   state.busy = false;

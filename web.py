@@ -44,6 +44,7 @@ STUDENT_META = {
     "rishi":   {"name": "Rishi",   "initial": "R", "color": "#5aa8e0", "accessory": "beret"},
     "tejas":   {"name": "Tejas",   "initial": "T", "color": "#7bc47f", "accessory": "frog"},
     "arjun":   {"name": "Arjun",   "initial": "A", "color": "#8a55d6", "accessory": "glasses"},
+    "you":     {"name": "You",     "initial": "Y", "color": "#06cf9c", "accessory": "none"},
 }
 
 
@@ -252,6 +253,29 @@ def _run_feature(feature, args, user_id, flow=None):
         proposal = solvers.solve_study(course_key, participants)
         solver_fn, solver_args = solvers.solve_study, {"course_key": course_key, "participants": participants}
 
+    elif feature == "events":
+        try:
+            result = asu_search.search_events(limit=5)
+            events = result.get("events", [])
+        except Exception as e:
+            logger.warning(f"ASU events error: {e}. Using mock.")
+            events = [{"title": "Fall Career Fair", "date": "Nov 1",
+                       "time": "10am-3pm", "location": "Tempe campus"}]
+        if not events:
+            return [{"type": "bot", "text": "No upcoming ASU events found right now."}]
+        lines = []
+        for ev in events:
+            title = ev.get("title", "Event")
+            date = ev.get("date", "")
+            loc = ev.get("location", "")
+            line = f"\u2022 **{title}**"
+            if date:
+                line += f"\n  {date}"
+            if loc:
+                line += f" \u2014 {loc}"
+            lines.append(line)
+        return [{"type": "bot", "text": "Here are some upcoming ASU events:\n\n" + "\n\n".join(lines)}]
+
     elif feature == "plans":
         participants = _all_participants(flow)
         try:
@@ -278,7 +302,7 @@ def _run_feature(feature, args, user_id, flow=None):
     else:
         return [{"type": "system", "text": f"Unknown feature: {feature}"}]
 
-    if proposal.get("proposal") is None and feature != "chores":
+    if proposal.get("proposal") is None and feature not in ("chores", "plans"):
         messages.append({"type": "system", "text": proposal.get("reason", "No solution found.")})
         return messages
 
@@ -447,7 +471,8 @@ _TOPICS = (
     ("chores", r"\bchores?\b|\bdishes\b|\btrash\b|\bvacuum"),
     ("study",  r"\bstud(y|ying)\b|\bstudy group\b"),
     ("class",  r"\bclass(es)?\b|\bsections?\b|\benroll"),
-    ("plans",  r"\bplans?\b|\bevents?\b|\bhang ?out\b|\bgo out\b"),
+    ("events", r"\bevents?\b|\bwhat'?s happening\b|\bthis week(end)?\b"),
+    ("plans",  r"\bplans?\b|\bhang ?out\b|\bgo (out|to|for)\b|\blet'?s go\b"),
 )
 _COURSE = re.compile(r"\b([A-Za-z]{2,4})\s*-?\s*(\d{3})\b")
 
@@ -480,7 +505,7 @@ def _extract_user(qs_dict, body=None):
     if not user and body and isinstance(body, dict):
         user = (body.get("user") or "").lower()
     if user not in STUDENT_META:
-        user = "shreeya"  # fallback
+        user = "you"  # fallback — generic student
     return user
 
 
@@ -505,8 +530,8 @@ class Handler(SimpleHTTPRequestHandler):
             self._json_response({"text": _chat_reply(user)})
         elif path == "/api/init":
             user = _extract_user(qs)
-            greeting = _chat_reply(user)
-            self._json_response({"greeting": greeting})
+            result = scenarios.current(user)
+            self._json_response(result)
         else:
             super().do_GET()
 
@@ -522,12 +547,15 @@ class Handler(SimpleHTTPRequestHandler):
             action = body.get("action", "next")
             value = body.get("value")
             result = scenarios.advance(user, action, value)
-            # Step 13 delegates to chores
+            # Chore delegation: replace "__chores__" with actual solver output
             if result.get("messages") == "__chores__":
                 prefs.reset_chores(user)
                 prefs.apply(user)
                 msgs = _run_feature("chores", "", user, flow)
+                if result.get("post_messages"):
+                    msgs.extend(result["post_messages"])
                 result["messages"] = msgs
+                result.pop("post_messages", None)
             self._json_response(result)
 
         elif path == "/api/message":
@@ -584,6 +612,7 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", len(data))
+            self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(data)
         except FileNotFoundError:

@@ -153,6 +153,7 @@ DEFAULT_LOOKS = {
     "rishi": ("beret", "#5aa8e0"),
     "tejas": ("frog", "#7bc47f"),
     "arjun": ("glasses", "#8a55d6"),
+    "you": ("none", "#06cf9c"),
 }
 
 

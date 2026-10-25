@@ -85,5 +85,27 @@
     "chore_preferences": {"cleaning": 5, "dishes": 4, "dusting": 3, "cooking": 4},
     "interests": ["hackathons", "morning runs", "career fairs"],
     "private_notes": "Vegetarian, prefers quiet after 10pm"
+  },
+  "you": {
+    "id": "you",
+    "slack_id": "U_YOU",
+    "name": "You",
+    "campus": "TEMPE",
+    "personality": "friendly, flexible, open to anything",
+    "schedule": {
+      "Mon": ["10:00-11:15 CSE310"],
+      "Tue": ["1:30-2:45 CSE240", "3:00-4:15 MAT267"],
+      "Wed": ["10:00-11:15 CSE310"],
+      "Thu": ["1:30-2:45 CSE240"],
+      "Fri": ["10:00-11:15 CSE310"]
+    },
+    "courses": [
+      {"subject": "CSE", "number": "310", "section": "1001", "title": "Data Structures"},
+      {"subject": "CSE", "number": "240", "section": "2001", "title": "Intro to Programming Languages"},
+      {"subject": "MAT", "number": "267", "section": "5001", "title": "Calculus III"}
+    ],
+    "chore_preferences": {"cleaning": 3, "dishes": 4, "dusting": 2, "cooking": 3},
+    "interests": ["hackathons", "AI workshops", "basketball games"],
+    "private_notes": ""
   }
 }
