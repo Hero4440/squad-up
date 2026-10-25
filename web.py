@@ -214,6 +214,7 @@ def _run_feature(feature, args, user_id, flow=None):
     messages = []
 
     if feature == "chores" and not prefs.chores_set(user_id):
+        prefs.reset_chores(user_id)
         return [
             {"type": "bot", "text": "Quick — how do you feel about each chore? Tap one per row."},
             _chore_check_card(user_id),
@@ -278,6 +279,8 @@ def _run_feature(feature, args, user_id, flow=None):
         hard_nos = prefs.blocked_constraints(participants)
         proposal = solvers.solve_chores(participants, hard_nos)
         solver_fn, solver_args = solvers.solve_chores, {"participants": participants}
+        # Reset so next "chores" asks preferences again
+        prefs.reset_chores(user_id)
 
     else:
         return [{"type": "system", "text": f"Unknown feature: {feature}"}]
